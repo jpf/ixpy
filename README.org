@@ -1,0 +1,235 @@
+* README
+** What this is
+
+This is the a partially completed implementation of the 9P2000
+protocol in Python. It is "partially completed" in the sense that it
+is not yet as complete as I would like it to be.
+
+It is, however, a fully complete library that is able to both encode
+and decode 9P2000 messages.
+
+The end goal is to write library that makes it as easy to implement a
+9P file server as it is to implement a HTTP server using a library
+like Flask or FastAPI.
+
+I'm aware of at least one other Python implemenation of 9P:
+[[https://github.com/svinota/py9p][py9p]]. I wrote my own implementation because, at the time that I tried
+it out, it wasn't clear to me how to directly deserialize or serialize
+9P packets. I'm glad that this exists however, as I used it as a
+reference from time to time.
+
+I'm also very thankful for the [[https://github.com/pbchekin/p9fs-py][p9fs-py]] project, which implements uses
+the py9p code to implement the [[https://github.com/fsspec/filesystem_spec][fsspec]] file system specification. The
+documentation for fsspec was very hard for me to understand, but the
+implemenation in p9fs-py is very well written and easy to
+understand. I borrowed liberally from it.
+
+** How to run it
+
+This repository is centered around two Python scripts:
+
+1. =test-construct.py=
+   This script tests the serialization and deserialization of 9P2000 messages.
+2. =fsspec-ixpyfs.py=
+   This script connects to a 9P2000 server and runs a series of file
+   operations against it.
+
+All of the code here was written against Python 3, it was /not/ tested
+against Python 2.
+
+To run this code, you will need to install a Python virtual
+environment and then activate it:
+
+#+begin_src sh
+  virtualenv venv
+  source venv/bin/activate
+#+end_src
+
+Then you will need to install the Python packages that are used by
+this code, do this with the =pip= command:
+
+#+begin_src sh
+  pip install -r requirements.txt
+#+end_src
+
+Once that is done, you will be able to run the =test-construct.py=
+script:
+
+#+begin_src sh
+ python test-construct.py
+#+end_src
+
+You will know that it's working if the output looks like this:
+
+#+begin_quote
+[base64-to-json] Tversion(tag=65535 msize=32768 version=9P2000) OK
+[base64-to-json] Rversion(tag=65535 msize=16408 version=9P2000) OK
+[base64-to-json] Tattach(tag=23058 fid=0 afid=4294967295 uname=joel) OK
+[base64-to-json] Rattach(tag=23058 qid=...) OK
+[base64-to-json] Twalk(tag=22085 fid=0 newfid=1407003519 nwname=2 wnames=...) OK
+[base64-to-json] Rwalk(tag=22085 nwqid=2 wqids=...) OK
+[base64-to-json] Topen(tag=5275 fid=1551958997 mode=...) OK
+[base64-to-json] Ropen(tag=5275 qid=... iounit=16384) OK
+[base64-to-json] Tcreate(tag=63855 fid=284732400 name=hello perm=436 mode=1) OK
+[base64-to-json] Rcreate(tag=63855 qid=... iounit=32744) OK
+[base64-to-json] Tread(tag=17907 fid=1551958997 offset=0 count=16384) OK
+[base64-to-json] Rread(tag=17907 count=800) OK
+[base64-to-json] Twrite(tag=18740 fid=284732400 offset=0 count=13) OK
+[base64-to-json] Rwrite(tag=18740 count=13) OK
+[base64-to-json] Tclunk(tag=33964 fid=395063994) OK
+[base64-to-json] Rclunk(tag=33964) OK
+[base64-to-json] Tread(tag=64 fid=450164082 offset=0 count=4096) OK
+[base64-to-json] Rread(tag=64 count=4096) OK
+[base64-to-json] Tstat(tag=44936 fid=0) OK
+[base64-to-json] Rstat(tag=44936 ... length=0 filename=active user=adm group=adm muid=bootes) OK
+[base64-to-json] Twstat(tag=0 fid=48 qid=... mode=438 length=18446744073709551615 name= uid= gid= muid=) OK
+[base64-to-json] Rwstat(tag=0) OK
+[json-to-base64] Tversion(tag=65535 msize=32768 version=9P2000): OK
+[json-to-base64] Rversion(tag=65535 msize=16408 version=9P2000): OK
+[json-to-base64] Tattach(tag=23058 fid=0 afid=4294967295 uname=joel): OK
+[json-to-base64] Rattach(tag=23058 qid=...): OK
+[json-to-base64] Twalk(tag=22085 fid=0 newfid=1407003519 nwname=2 wnames=...): OK
+[json-to-base64] Rwalk(tag=22085 nwqid=2 wqids=...): OK
+[json-to-base64] Topen(tag=5275 fid=1551958997 mode=...): OK
+[json-to-base64] Ropen(tag=5275 qid=... iounit=16384): OK
+[json-to-base64] Tcreate(tag=63855 fid=284732400 name=hello perm=436 mode=1): OK
+[json-to-base64] Rcreate(tag=63855 qid=... iounit=32744): OK
+[json-to-base64] Tread(tag=17907 fid=1551958997 offset=0 count=16384): OK
+[json-to-base64] Rread(tag=17907 count=800): OK
+[json-to-base64] Twrite(tag=18740 fid=284732400 offset=0 count=13): OK
+[json-to-base64] Rwrite(tag=18740 count=13): OK
+[json-to-base64] Tclunk(tag=33964 fid=395063994): OK
+[json-to-base64] Rclunk(tag=33964): OK
+[json-to-base64] Tread(tag=64 fid=450164082 offset=0 count=4096): OK
+[json-to-base64] Rread(tag=64 count=4096): OK
+[json-to-base64] Tstat(tag=44936 fid=0): OK
+[json-to-base64] Rstat(tag=44936 ... length=0 filename=active user=adm group=adm muid=bootes): OK
+[json-to-base64] Twstat(tag=0 fid=48 qid=... mode=438 length=18446744073709551615 name= uid= gid= muid=): OK
+[json-to-base64] Rwstat(tag=0): OK
+#+end_quote
+
+Running the =fsspec-ixpyfs.py= script will take a lot more work. For
+testing, I used =/bin/exportfs= in Plan 9 as a "file server". I did
+this by installing the 9front Plan 9 distribution in QEMU, using this
+guide for setting up 9front: https://samhza.com/2021/9front-qemu/
+
+Once I had a working install of 9front, I used this command to run it
+in QEMU:
+
+#+begin_src shell
+qemu-system-x86_64 -hda 9front.qcow2.img -boot d -vga std -m 1024 -device e1000,netdev=net0 -netdev user,id=net0,hostfwd=tcp::9999-:9999,hostfwd=tcp::17010-:17010
+#+end_src
+
+The main thing that this does is expose port 9999 in the VM as port
+9999 on the host.
+
+Then, inside of the VM, I ran these commands to start up the file
+server:
+
+#+begin_src shell
+  ip/ipconfig
+  aux/listen1 -tv tcp!*!9999 /bin/exportfs -r /
+#+end_src
+
+I'm not sure if the =ip/ipconfig= command is needed, but I'm pretty
+sure it has to run at least once to get networking set up.
+
+Assuming that you have a working 9P2000 file server running on
+localhost:9999, then you can run the =fsspec-ixpyfs.py= command:
+
+#+begin_src shell
+  python fsspec-ixpyfs.py
+#+end_src
+
+The output should look like this:
+
+#+begin_quote
+> Running test: Make sure that our test folder exists
+> Running test: Create a file
+> Running test: Write to the file
+> Running test: Read from the file
+> Running test: Append to the file
+> Running test: Verify that the text was appended to the file
+> Running test: Upload a larger file
+> Running test: Check the hash of the larger file
+> Running test: Read the test directory
+> Running test: Create a new directory
+> Running test: Move the file to the new directory
+> Running test: Verify the file move
+> Running test: Rename the moved file (using move to rename)
+> Running test: Verify the file rename
+> Running test: Read the renamed file
+> Running test: Change file permissions using chmod
+> Running test: Verify permissions changes
+> Running test: Change group ID
+> Running test: Verify change
+> Running test: Verify access and modified times
+> Running test: Delete the renamed file
+> Running test: Verify deletion
+> Running test: Remove the created directory
+> Running test: Verify directory deletion
+All filesystem operations completed successfully.
+#+end_quote
+
+** What is missing
+The main thing that this codebase is missing is, in no particular
+order:
+- *An implementation of a basic 9P2000 server*
+  This is the next step
+- *More tests*
+  There are a lot of things that I should be testing for, but am not.
+- *Handling for edge cases*
+  In a similar vein, there are lots of edge cases that I simply do not
+  account for.
+** What I've learned so far
+Below are the main things that I've learned from this project, so far
+*** 9P implementations aren't as complete as you'd think
+There is a [[http://9p.cat-v.org/implementations][list of 9P implemenations on cat-v.org]] which, upon first
+glance, gives the impression that nearly every major programming
+language has a library to talk 9P. And while that's strictly true,
+what I found frustrating is that most of them seem to be shaped to
+only handle the use case of using 9P as a replacement for NFS or
+CIFS. What I want is a way to easily implement virtual filesystems.
+*** Implementating 9P is a lot more work than I expected
+The core 9P protocol is pretty simple. I was able to get basic
+serialization and deserialization of 9P messages working in about an
+evening. What is a lot harder is knowing how to use the 9P primitives
+to actually work with files and directories.
+*** Plan 9 is an alien operating system
+While it /looks/ like a Unix type operating system, it's very
+different under the hood. Here are the main things that I wish I had
+known about Plan 9 earlier:
+
+1. Mounts in Plan 9 are often per-process
+   They aren't "global" like mounts are in Linux (by default)
+2. You need a three button mouse to make the most use of Plan 9
+   ... but you can use the Shift key to simulate the third mouse button
+3. The terminal isn't a teletype emulator
+   It's more like the terminal in Genera, a "live" document. The up
+   arrow doesn't scroll through your command history.
+*** 9P is way more complex than HTTP
+
+My extensive experience implementing HTTP servers made me drastically
+under-estimate the level of effort needed to implement a file server
+in 9P. It's not just that you're working with binary data that's
+different, there are also a lot of edge cases to keep in mind.
+
+** Future plans
+
+- Implement a file server in 9P
+  To start, I'd like to just make something that keeps files in memory
+- Explore a Flask-like interface to 9P
+  I want to make it easy to build dynamic file systems using Python
+- Implement the Plan 9 network file system
+  I want to explore using a filesystem to make TCP/IP connections, but
+  be able to do so from the comfort of macOS
+- Write a webpage that walks people through the steps to write their
+  own 9P implementations
+
+** Things that I'm worried about
+
+9P2000 uses signed 32-bit integers to represent dates. This means
+that, unless a change is made soon, 9P2000 will stop being useful
+post 2038.
+
+Here are my ideas for handling that: https://mastodon.social/@jpf/112900926024735222
