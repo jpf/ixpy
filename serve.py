@@ -1,6 +1,5 @@
 from datetime import datetime
 import hashlib
-import logging
 import os
 import socket
 import sys
@@ -15,6 +14,29 @@ import ixpy
 from ixpy import IxpMessage, container_to_json, Builder
 from ixpmemoryfs import IxpMemoryFileSystem, IxpMemoryFile
 
+import logging
+
+
+def setup_custom_logger():
+    # formatter = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(module)s [%(name)s:%(lineno)s]  %(message)s')
+    formatter = logging.Formatter(fmt='[%(levelname)s]\t%(filename)s:%(lineno)s (%(funcName)s)\t%(message)s')
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    logger.handlers.clear()
+    logger.addHandler(handler)
+    return logger
+
+logger = setup_custom_logger()
+# logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s')
+
+# TODO:
+# - Get subdirectories working
+# - Get ixpmemoryfs working as an fsspec module, so I can do fsspec.setup() - or whatever
 
 class DynamicObj(IxpMemoryFile):
     def __init__(self, *args, **kwargs):
@@ -28,7 +50,7 @@ class DynamicObj(IxpMemoryFile):
         return rv.getbuffer()
 
     def write(self, value):
-        print(f"DYNAMIC FILE: write: {value}")
+        logger.debug(f"DYNAMIC FILE: write: {value}")
         num = value.strip()
         if num == b"":
             self.value = 0
@@ -37,7 +59,7 @@ class DynamicObj(IxpMemoryFile):
         return len(value)
 
     def seek(self, offset, whence=0):
-        print("DYNAMIC FILE: seek")
+        logger.debug("DYNAMIC FILE: seek")
         pass
 
 
@@ -47,10 +69,9 @@ class Server:
         self.port = port
         self.socket = None
         self.ixp = Builder()
-        self.ixp.log.setLevel(logging.DEBUG)
         self.message = IxpMessage
-        self.log = logging.getLogger(self.__class__.__name__)
-        self.log.setLevel(logging.DEBUG)
+        # self.log = logging.getLogger(self.__class__.__name__)
+        self.log = logger
 
         self.fs = IxpMemoryFileSystem()
 
@@ -80,9 +101,11 @@ class Server:
     def handle_client(self, client_socket):
         while True:
             message = client_socket.recv(self.ixp.msize)
+            if len(message) < 4:
+                self.log.info("No more data, shutting down")
+                self.log.info(f"Unclunked fids: {self.fid}")
+                return False
             request = self.message.parse(message)
-            self.log.info(f"Received: {container_to_json(request)}")
-
             try:
                 response = self.handle_message(request)
             except Exception as e:
@@ -105,22 +128,21 @@ class Server:
         return paths
 
     def _path_to_qid(self, path):
-        self.log.debug(f"_path_to_qid({path})")
+        self.log.debug(f"path={path}")
         try:
             info = self.fs.info(path, as_9p=True)
         except FileNotFoundError:
-            self.log.debug(f"_path_to_qid: path not found {path}")
+            self.log.debug(f"path not found {path}")
             return None
         except Exception as e:
             self.log.debug(
-                f"_path_to_qid({path}) got unhandled exception: {type(e).__name__}: {e}"
+                f"path={path} got unhandled exception: {type(e).__name__}: {e}"
             )
             return None
-        self.log.debug(f"_path_to_qid: got info: {info}")
+        self.log.debug(f"got info: {info}")
         return info["qid"]
 
     def _handle_walk(self, request):
-        # self.log.debug(f"_handle_walk: wnames={request.payload.wnames}")
         wnames = request.payload.wnames
         for wname in wnames:
             if "/" in wname:
@@ -129,13 +151,13 @@ class Server:
                 )
 
         current_path = self.fid.get(request.payload.fid, "/")
-        print(f"_handle_walk: current_path={current_path} wnames={wnames}")
+        self.log.debug(f"current_path={current_path} wnames={wnames}")
         full_path = os.path.join(current_path, *wnames)
-        print(f"_handle_walk: full_path={full_path}")
+        self.log.debug(f"full_path={full_path}")
 
         # paths = self.paths_from_path(full_path)
         paths = self.paths_from_wnames(wnames)
-        self.log.debug(f"_handle_walk: paths={paths}")
+        self.log.debug(f"paths={paths}")
         wqids = []
         for path in paths:
             try:
@@ -145,15 +167,15 @@ class Server:
             if qid:
                 wqids.append(qid)
         self.log.debug(
-            f"_handle_walk SET FID {request.payload.newfid} = {full_path} which is from {wnames}"
+            f"SET FID {request.payload.newfid} = {full_path} which is from {wnames}"
         )
         self.fid[request.payload.newfid] = full_path
         return self.ixp.Rwalk(tag=request.tag, wqids=wqids)
 
     def _listdir(self, path):
-        self.log.debug(f"_listdir({path})")
+        self.log.debug(f"path={path}")
         results = self.fs.ls(path, detail=True, as_9p=True)
-        self.log.debug(f"_listdir results: '{results}'")
+        self.log.debug(f"results='{results}'")
         data = ixpy.StatPayloads.build(results)
         return data
 
@@ -187,7 +209,7 @@ class Server:
             is_dir = (perm & ixpy.DMDIR) != 0
             base = self.fid[fid]
             path = os.path.join(base, request.payload.name)
-            print(f"Tcreate on {fid} which is {base} = {path}")
+            self.log.debug(f"Tcreate on {fid} which is {base} = {path}")
             if is_dir:
                 self.fs.mkdir(path)
             else:
@@ -256,7 +278,7 @@ class Server:
 
             mode = request.payload.stat.mode
             if mode != ixpy.MODE_MAX:
-                print(f"Twstat chmod({path}, {mode})")
+                self.log.debug(f"Twstat chmod({path}, {mode})")
                 self.fs.chmod(path, mode)
 
             user_id = None
@@ -267,7 +289,7 @@ class Server:
                 group_id = request.payload.stat.gid
 
             if user_id or group_id:
-                print(f"Twstat chown({path}, {user_id}, {group_id})")
+                self.log.debug(f"Twstat chown({path}, {user_id}, {group_id})")
                 self.fs.chown(path, user_id, group_id)
 
             TIME_MAX = "1969-12-31T23:59:59.000000000Z"
@@ -299,7 +321,7 @@ def start_server():
         server.fs.mkfunc("/", DynamicObj(path="/hello"))
         server.start()
     except KeyboardInterrupt:
-        print("Server shutting down")
+        logger.info("Server shutting down")
     finally:
         server.stop()
 
@@ -310,7 +332,7 @@ def monitor_file_changes(server_thread, file_path):
     while server_thread.is_alive():
         current_mtime = os.path.getmtime(file_path)
         if current_mtime != last_mtime:
-            print("File changed, restarting server...")
+            logger.info("File changed, restarting server...")
             os.execv(sys.executable, ["python"] + sys.argv)
         time.sleep(1)
 

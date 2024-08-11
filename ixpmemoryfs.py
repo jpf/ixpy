@@ -15,7 +15,7 @@ from fsspec.utils import stringify_path
 
 import ixpy
 
-logger = logging.getLogger("fsspec.ixpmemoryfs")
+logger = logging.getLogger(__name__)
 
 class IxpMemoryFileSystem(AbstractFileSystem):
     """A filesystem based on a dict of BytesIO objects
@@ -128,7 +128,7 @@ class IxpMemoryFileSystem(AbstractFileSystem):
             raise FileNotFoundError(path)
 
     def info(self, path, **kwargs):
-        logger.debug("info: %s", path)
+        logger.debug(f"path={path}")
         path = self._strip_protocol(path)
         item = self.store.get_by_path(path)
         if not item:
@@ -139,7 +139,7 @@ class IxpMemoryFileSystem(AbstractFileSystem):
             return item.fs_stat()
 
     def chmod(self, path, mode):
-        logger.debug("chmod: %s", path)
+        logger.debug(f"path={path}")
         path = self._strip_protocol(path)
         item = self.store.get_by_path(path)
         if not item:
@@ -148,7 +148,7 @@ class IxpMemoryFileSystem(AbstractFileSystem):
         return True
 
     def chown(self, path, user_id, group_id):
-        logger.debug("chmod: %s", path)
+        logger.debug(f"path={path}")
         path = self._strip_protocol(path)
         item = self.store.get_by_path(path)
         if not item:
@@ -161,14 +161,14 @@ class IxpMemoryFileSystem(AbstractFileSystem):
 
 
     def utime(self, path, times=None):
-        logger.debug(f"utime({path}, {times})")
+        logger.debug(f"path={path} times={times}")
         path = self._strip_protocol(path)
         item = self.store.get_by_path(path)
         if not item:
             raise FileNotFoundError(path)
         atime = times[0]
         mtime = times[1]
-        logger.debug(f"utime: atime={atime} mtime={mtime})")
+        logger.debug(f"atime={atime} mtime={mtime})")
         if atime:
             item.atime = atime
         if mtime:
@@ -190,7 +190,7 @@ class IxpMemoryFileSystem(AbstractFileSystem):
     ):
         path = self._strip_protocol(path)
         item = self.store.get_by_path(path)
-        logger.debug(f"_open: item is {type(item)}")
+        logger.debug(f"item is {type(item)}")
 
         if item and item.qid._type.directory:
             raise IsADirectoryError(path)
@@ -244,10 +244,10 @@ class IxpMemoryFileSystem(AbstractFileSystem):
             raise FileNotFoundError(path1)
 
     def cat_file(self, path, start=None, end=None, **kwargs):
-        logger.debug(f"cat_file: {path}")
+        logger.debug(f"path={path}")
         path = self._strip_protocol(path)
         f = self.store.get_by_path(path)
-        logger.debug(f"cat_file: f is {type(f)}")
+        logger.debug(f"f is {type(f)}")
         try:
             return bytes(f.getbuffer()[start:end])
         except KeyError:
@@ -326,7 +326,7 @@ class IxpMemoryFile(BytesIO):
     """
 
     def __init__(self, fs=None, path=None, data=None, mode=0o755, uid="glenda", gid="glenda"):
-        logger.debug("open file %s", path)
+        logger.debug(f"path={path}")
         self.fs = fs
         name = os.path.basename(path)
 
