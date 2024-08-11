@@ -51,9 +51,6 @@ class Server:
         self.log.setLevel(logging.DEBUG)
 
         self.fs = IxpMemoryFileSystem()
-        self.fs.mkdir("/usr/glenda/test/", parents=True)
-        # FIXME: directories aren't working yet ... why?
-        self.fs.mkfunc("/", DynamicObj(path="/hello"))
 
         self.fid = {
             0: "/"
@@ -289,10 +286,9 @@ class Server:
 def start_server():
     try:
         server = Server()
-        # m = IxpMemoryFile(fs=server.fs, path="/dynamic/fnordzz")
-        # m.qid._type.directory = True
-        # server.fs.mkfunc("/dynamic", m)
-        # server.fs.touch("/dynamic/touched")
+        server.fs.mkdir("/usr/glenda/test/", parents=True)
+        # FIXME: directories aren't working yet ... why?
+        server.fs.mkfunc("/", DynamicObj(path="/hello"))
         server.start()
     except KeyboardInterrupt:
         print("Server shutting down")
