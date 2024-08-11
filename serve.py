@@ -15,6 +15,7 @@ import ixpy
 from ixpy import IxpMessage, container_to_json, Builder
 from ixpmemoryfs import IxpMemoryFileSystem, IxpMemoryFile
 
+
 class DynamicObj(IxpMemoryFile):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -39,8 +40,9 @@ class DynamicObj(IxpMemoryFile):
         print("DYNAMIC FILE: seek")
         pass
 
+
 class Server:
-    def __init__(self, host='localhost', port=8888):
+    def __init__(self, host="localhost", port=8888):
         self.host = host
         self.port = port
         self.socket = None
@@ -52,11 +54,7 @@ class Server:
 
         self.fs = IxpMemoryFileSystem()
 
-        self.fid = {
-            0: "/"
-        }
-
-
+        self.fid = {0: "/"}
 
     def start(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -94,7 +92,7 @@ class Server:
     def paths_from_wnames(self, wnames):
         paths = []
         for i in range(1, len(wnames) + 1):
-            path = '/' + '/'.join(wnames[:i])
+            path = "/" + "/".join(wnames[:i])
             paths.append(path)
         return paths
 
@@ -102,7 +100,7 @@ class Server:
         paths = []
         wnames = path.strip("/").split("/")
         for i in range(1, len(wnames) + 1):
-            path = '/' + '/'.join(wnames[:i])
+            path = "/" + "/".join(wnames[:i])
             paths.append(path)
         return paths
 
@@ -114,18 +112,21 @@ class Server:
             self.log.debug(f"_path_to_qid: path not found {path}")
             return None
         except Exception as e:
-            self.log.debug(f"_path_to_qid({path}) got unhandled exception: {type(e).__name__}: {e}")
+            self.log.debug(
+                f"_path_to_qid({path}) got unhandled exception: {type(e).__name__}: {e}"
+            )
             return None
         self.log.debug(f"_path_to_qid: got info: {info}")
         return info["qid"]
-
 
     def _handle_walk(self, request):
         # self.log.debug(f"_handle_walk: wnames={request.payload.wnames}")
         wnames = request.payload.wnames
         for wname in wnames:
             if "/" in wname:
-                return self.ixp.Rerror(tag=request.tag, ename=f"wname '{wname}' must not contain '/'")
+                return self.ixp.Rerror(
+                    tag=request.tag, ename=f"wname '{wname}' must not contain '/'"
+                )
 
         current_path = self.fid.get(request.payload.fid, "/")
         print(f"_handle_walk: current_path={current_path} wnames={wnames}")
@@ -143,7 +144,9 @@ class Server:
                 return self.ixp.Rerror(tag=request.tag, ename=f"{e}")
             if qid:
                 wqids.append(qid)
-        self.log.debug(f"_handle_walk SET FID {request.payload.newfid} = {full_path} which is from {wnames}")
+        self.log.debug(
+            f"_handle_walk SET FID {request.payload.newfid} = {full_path} which is from {wnames}"
+        )
         self.fid[request.payload.newfid] = full_path
         return self.ixp.Rwalk(tag=request.tag, wqids=wqids)
 
@@ -155,12 +158,12 @@ class Server:
         return data
 
     def handle_message(self, request):
-        if request.type == 'Tversion':
-            rv =  self.ixp.Rversion(tag=request.tag,
-                                    msize=request.payload.msize,
-                                    version="9P2000")
+        if request.type == "Tversion":
+            rv = self.ixp.Rversion(
+                tag=request.tag, msize=request.payload.msize, version="9P2000"
+            )
             return rv
-        elif request.type == 'Tattach':
+        elif request.type == "Tattach":
             return self.ixp.Rattach(
                 tag=request.tag,
                 qid={
@@ -174,11 +177,11 @@ class Server:
                     },
                     "version": 0,
                     "path": 0,
-                }
+                },
             )
-        elif request.type == 'Twalk':
+        elif request.type == "Twalk":
             return self._handle_walk(request)
-        elif request.type == 'Tcreate':
+        elif request.type == "Tcreate":
             fid = request.payload.fid
             perm = request.payload.perm
             is_dir = (perm & ixpy.DMDIR) != 0
@@ -204,7 +207,9 @@ class Server:
             path = self.fid[fid]
             qid = self.fs.info(path, as_9p=True)["qid"]
             if not qid:
-                return self.ixp.Rerror(tag=request.tag, ename=f"Error getting QID for FID={fid}")
+                return self.ixp.Rerror(
+                    tag=request.tag, ename=f"Error getting QID for FID={fid}"
+                )
             iounit = self.ixp.msize
             if path == "/":
                 iounit = 0
@@ -281,7 +286,10 @@ class Server:
             del self.fid[request.payload.fid]
             return self.ixp.Rclunk(tag=request.tag)
         else:
-            return self.ixp.Rerror(tag=request.tag, ename=f"Unknown request type: {request.type}")
+            return self.ixp.Rerror(
+                tag=request.tag, ename=f"Unknown request type: {request.type}"
+            )
+
 
 def start_server():
     try:
@@ -295,6 +303,7 @@ def start_server():
     finally:
         server.stop()
 
+
 def monitor_file_changes(server_thread, file_path):
     last_mtime = os.path.getmtime(file_path)
 
@@ -302,8 +311,9 @@ def monitor_file_changes(server_thread, file_path):
         current_mtime = os.path.getmtime(file_path)
         if current_mtime != last_mtime:
             print("File changed, restarting server...")
-            os.execv(sys.executable, ['python'] + sys.argv)
+            os.execv(sys.executable, ["python"] + sys.argv)
         time.sleep(1)
+
 
 if __name__ == "__main__":
     server_thread = threading.Thread(target=start_server)
