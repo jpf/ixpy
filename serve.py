@@ -19,7 +19,9 @@ import logging
 
 def setup_custom_logger():
     # formatter = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(module)s [%(name)s:%(lineno)s]  %(message)s')
-    formatter = logging.Formatter(fmt='[%(levelname)s]\t%(filename)s:%(lineno)s (%(funcName)s)\t%(message)s')
+    formatter = logging.Formatter(
+        fmt="[%(levelname)s]\t%(filename)s:%(lineno)s (%(funcName)s)\t%(message)s"
+    )
 
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
@@ -31,12 +33,13 @@ def setup_custom_logger():
     logger.addHandler(handler)
     return logger
 
+
 logger = setup_custom_logger()
-# logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s')
 
 # TODO:
 # - Get subdirectories working
 # - Get ixpmemoryfs working as an fsspec module, so I can do fsspec.setup() - or whatever
+
 
 class DynamicObj(IxpMemoryFile):
     def __init__(self, *args, **kwargs):
@@ -50,7 +53,7 @@ class DynamicObj(IxpMemoryFile):
         return rv.getbuffer()
 
     def write(self, value):
-        logger.debug(f"DYNAMIC FILE: write: {value}")
+        logger.debug(f"value={value}")
         num = value.strip()
         if num == b"":
             self.value = 0
@@ -59,7 +62,7 @@ class DynamicObj(IxpMemoryFile):
         return len(value)
 
     def seek(self, offset, whence=0):
-        logger.debug("DYNAMIC FILE: seek")
+        logger.debug(f"offset={offset} whence={whence}")
         pass
 
 
@@ -70,7 +73,6 @@ class Server:
         self.socket = None
         self.ixp = Builder()
         self.message = IxpMessage
-        # self.log = logging.getLogger(self.__class__.__name__)
         self.log = logger
 
         self.fs = IxpMemoryFileSystem()

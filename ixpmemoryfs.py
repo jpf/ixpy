@@ -17,6 +17,7 @@ import ixpy
 
 logger = logging.getLogger(__name__)
 
+
 class IxpMemoryFileSystem(AbstractFileSystem):
     """A filesystem based on a dict of BytesIO objects
 
@@ -93,7 +94,6 @@ class IxpMemoryFileSystem(AbstractFileSystem):
             child.qid._type.directory = True
             parent.add_child(child)
 
-
     def makedirs(self, path, exist_ok=False):
         try:
             self.mkdir(path, create_parents=True)
@@ -159,7 +159,6 @@ class IxpMemoryFileSystem(AbstractFileSystem):
             item.gid = group_id
         return True
 
-
     def utime(self, path, times=None):
         logger.debug(f"path={path} times={times}")
         path = self._strip_protocol(path)
@@ -174,7 +173,6 @@ class IxpMemoryFileSystem(AbstractFileSystem):
         if mtime:
             item.mtime = mtime
         return True
-
 
     def _raw(self, path, **kwargs):
         return self.info(path, as_9p=True, **kwargs)
@@ -291,7 +289,8 @@ class IxpMemoryFileSystem(AbstractFileSystem):
             else:
                 self.rmdir(p)
 
-class QIDType():
+
+class QIDType:
     def __init__(self):
         self.directory = False
         self.append = False
@@ -300,7 +299,8 @@ class QIDType():
         self.auth_file = False
         self.temp_file = False
 
-class QID():
+
+class QID:
     def __init__(self, path):
         self._type = QIDType()
         self._version = 1
@@ -312,9 +312,8 @@ class QID():
 
         # Take the first N bytes (8 bits per byte) of the hash
         first_n_bytes = sha1_hash[:8]
-        result = int.from_bytes(first_n_bytes, byteorder='big', signed=False)
+        result = int.from_bytes(first_n_bytes, byteorder="big", signed=False)
         return result
-
 
 
 class IxpMemoryFile(BytesIO):
@@ -325,7 +324,9 @@ class IxpMemoryFile(BytesIO):
     No need to provide fs, path if auto-committing (default)
     """
 
-    def __init__(self, fs=None, path=None, data=None, mode=0o755, uid="glenda", gid="glenda"):
+    def __init__(
+        self, fs=None, path=None, data=None, mode=0o755, uid="glenda", gid="glenda"
+    ):
         logger.debug(f"path={path}")
         self.fs = fs
         name = os.path.basename(path)
@@ -408,7 +409,6 @@ class IxpMemoryFile(BytesIO):
             "name": self.name,
             "type": "directory" if self.qid._type.directory else "file",
             "size": self.length,
-
             "qid": self.qid,
             "mode": self.mode,
             "accessed": self.atime.timestamp(),
@@ -440,7 +440,7 @@ class IxpMemoryFile(BytesIO):
             return self
 
         # Split the path into parts
-        parts = path.strip('/').split('/')
+        parts = path.strip("/").split("/")
 
         # Start with the current object
         current = self
