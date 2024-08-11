@@ -190,6 +190,7 @@ class IxpMemoryFileSystem(AbstractFileSystem):
     ):
         path = self._strip_protocol(path)
         item = self.store.get_by_path(path)
+        logger.debug(f"_open: item is {type(item)}")
 
         if item and item.qid._type.directory:
             raise IsADirectoryError(path)
@@ -243,9 +244,10 @@ class IxpMemoryFileSystem(AbstractFileSystem):
             raise FileNotFoundError(path1)
 
     def cat_file(self, path, start=None, end=None, **kwargs):
-        logger.debug("cat: %s", path)
+        logger.debug(f"cat_file: {path}")
         path = self._strip_protocol(path)
         f = self.store.get_by_path(path)
+        logger.debug(f"cat_file: f is {type(f)}")
         try:
             return bytes(f.getbuffer()[start:end])
         except KeyError:
@@ -344,7 +346,14 @@ class IxpMemoryFile(BytesIO):
 
     @property
     def length(self):
-        return self.getbuffer().nbytes
+        """The length of the buffer, or 0 if it's a dynamic file
+
+        A file is considered to be dynamic if qid.version is 0
+        """
+        if self.qid._version > 0:
+            return self.getbuffer().nbytes
+        else:
+            return 0
 
     @property
     def mode(self):

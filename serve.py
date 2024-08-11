@@ -7,6 +7,7 @@ import sys
 import threading
 import time
 import traceback
+import io
 
 import fsspec
 
@@ -14,7 +15,29 @@ import ixpy
 from ixpy import IxpMessage, container_to_json, Builder
 from ixpmemoryfs import IxpMemoryFileSystem, IxpMemoryFile
 
-# Lesson learned: Don't use the fsspec memory filesystem, write my own that stores QID and path information natively
+class DynamicObj(IxpMemoryFile):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.qid._version = 0
+        self.value = 0
+
+    def getbuffer(self):
+        msg = f"The running total is: {self.value}\n"
+        rv = io.BytesIO(msg.encode("utf-8"))
+        return rv.getbuffer()
+
+    def write(self, value):
+        print(f"DYNAMIC FILE: write: {value}")
+        num = value.strip()
+        if num == b"":
+            self.value = 0
+        else:
+            self.value += int(num)
+        return len(value)
+
+    def seek(self, offset, whence=0):
+        print("DYNAMIC FILE: seek")
+        pass
 
 class Server:
     def __init__(self, host='localhost', port=8888):
@@ -29,12 +52,8 @@ class Server:
 
         self.fs = IxpMemoryFileSystem()
         self.fs.mkdir("/usr/glenda/test/", parents=True)
-        # self.fs.mkdir("/usr/glenda/test2/", parents=True)
-        self.fs.mkdir("/dynamic", parents=True)
-        self.fs.touch("/dynamic/doop")
-        # with self.fs.open("/dynamic/hello", "r+b") as f:
-        #     f.seek(0)
-        #     f.write(b"Hello world?")
+        # FIXME: directories aren't working yet ... why?
+        self.fs.mkfunc("/", DynamicObj(path="/hello"))
 
         self.fid = {
             0: "/"
@@ -266,25 +285,6 @@ class Server:
             return self.ixp.Rclunk(tag=request.tag)
         else:
             return self.ixp.Rerror(tag=request.tag, ename=f"Unknown request type: {request.type}")
-
-class DynamicFile(IxpMemoryFile):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def read(self, size):
-        return b"Hello world!"
-
-    # def write(self, value):
-    #     pass
-
-    # def getvalue(self):
-    #     pass
-
-    # def seek(self, offset, whence=0):
-    #     pass
-
-    # def close(self):
-    #     pass
 
 def start_server():
     try:
